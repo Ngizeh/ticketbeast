@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use App\Billing\PaymentFailedException;
 use Exception;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 

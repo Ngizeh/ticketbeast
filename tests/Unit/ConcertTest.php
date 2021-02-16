@@ -4,9 +4,10 @@ namespace Tests\Unit;
 
 use App\Concert;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
+use Illuminate\Support\Collection;
+use App\Exceptions\NotEnoughTickectsRemaining;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class ConcertTest extends TestCase
 {
@@ -56,8 +57,80 @@ class ConcertTest extends TestCase
 		$this->assertTrue($publishedconcerts->contains($publishedconcertB));
 
 		$this->assertFalse($publishedconcerts->contains($unpublishedconcert));
+	}
 
+	/** @test **/
+	public function it_has_many_orders()
+	{
+		$concert = factory(Concert::class)->create();
+
+		$this->assertInstanceOf(Collection::class, $concert->orders);
+	}
+
+	/** @test **/
+	public function it_has_tickets()
+	{
+		$concert = factory(Concert::class)->create();
+
+		$this->assertInstanceOf(Collection::class, $concert->tickets);
+	}
+
+	/** @test **/
+	public function concert_can_add_tickets()
+	{
+		$concert = factory(Concert::class)->create();
+
+		$concert->addTickets(50);
+
+		$this->assertEquals(50, $concert->ticketsRemaining());
+	}
+
+	/** @test **/
+	public function concert_counts_tickets_remaing_for_concerts()
+	{
+		$concert = factory(Concert::class)->create()->addTickets(50);
+
+		$concert->orderTickets('jane@example', 30);
+
+		$this->assertEquals(20, $concert->ticketsRemaining());
 	}
 
 
+	/** @test **/
+	public function concert_can_have_ordered_tickets()
+	{
+		$concert = factory(Concert::class)->create()->addTickets(3);
+
+		$order = $concert->orderTickets('jane@example.com', 3);
+
+		$this->assertEquals(3, $order->ticketQuantity());
+		$this->assertEquals('jane@example.com', $order->email);
+	}
+
+	/** @test **/
+	public function can_not_purchase_tickets_more_than_remaining()
+	{
+		$concert = factory(Concert::class)->create()->addTickets(3);
+
+		$this->expectException(NotEnoughTickectsRemaining::class);
+		$orders = $concert->orderTickets('jane@example.com', 4);
+
+		$this->assertNull($orders);
+		$this->assertEquals(3, $concert->ticketsRemaining());
+	}
+
+
+	/** @test **/
+	public function can_not_purchase_tickets_that_have_already_been_purchased()
+	{
+		$concert = factory(Concert::class)->create();
+		$concert->addTickets(15);
+		$concert->orderTickets('jane@example.com', 10);
+
+		$this->expectException(NotEnoughTickectsRemaining::class);
+		$johnOrders = $concert->orderTickets('john@example.com', 6);
+
+		$this->assertNull($johnOrders);
+		$this->assertEquals(5, $concert->ticketsRemaining());
+	}
 }
