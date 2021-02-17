@@ -2,11 +2,13 @@
 
 namespace Tests\Unit;
 
+use App\Order;
 use App\Concert;
 use Carbon\Carbon;
 use Tests\TestCase;
 use Illuminate\Support\Collection;
 use App\Exceptions\NotEnoughTickectsRemaining;
+use App\Ticket;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class ConcertTest extends TestCase

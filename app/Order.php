@@ -8,6 +8,20 @@ class Order extends Model
 {
     protected $guarded = [];
 
+    public static function ticketsFor($tickets, $email, $amount)
+    {
+        $orders = self::create([
+            'email' => $email,
+            'amount' => $amount
+        ]);
+
+        foreach ($tickets as $ticket) {
+            $orders->tickets()->save($ticket);
+        }
+        return $orders;
+    }
+    
+
     public function tickets()
     {
         return $this->hasMany(Ticket::class);
@@ -26,6 +40,16 @@ class Order extends Model
 
         $this->delete();
     }
+
+    public function toArray()
+    {
+        return [
+            'email' => $this->email,
+            'amount' => $this->amount,
+            'ticket_quantity' => $this->ticketQuantity()
+        ];
+    }
+    
     
     
 

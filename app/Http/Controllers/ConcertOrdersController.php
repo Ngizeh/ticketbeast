@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Order;
 use App\Concert;
 use Illuminate\Http\Request;
 use App\Billing\PaymentGateway;
 use App\Billing\PaymentFailedException;
 use App\Exceptions\NotEnoughTickectsRemaining;
+use App\Reservation;
 
 class ConcertOrdersController extends Controller
 {
@@ -19,7 +21,7 @@ class ConcertOrdersController extends Controller
     public function store($concertId)
     {
         $concert = Concert::published()->findOrFail($concertId);
-        
+
         request()->validate([
             'email' => 'required|email',
             'ticket_quantity' => 'required|integer|min:1',
@@ -27,13 +29,15 @@ class ConcertOrdersController extends Controller
         ]);
 
         try {
-            $order = $concert->orderTickets(request('email'), request('ticket_quantity'));
-            $this->paymentGateway->charge($concert->ticket_price *  request('ticket_quantity'), request('payment_token'));
-            return response()->json([], 201);
-        } catch (NotEnoughTickectsRemaining $e) {
-            return response()->json([], 422);
+            $tickets = $concert->findTickets(request('ticket_quantity'));
+            $reservation = new Reservation($tickets);
+            $this->paymentGateway->charge($reservation->totalCost(), request('payment_token'));
+            $order = Order::ticketsFor($tickets, request('email'), $reservation->totalCost());
+            return response()->json($order, 201);
         } catch (PaymentFailedException $e) {
-            $order->cancel();
+            // $order->cancel();
+            return response()->json([], 422);
+        } catch (NotEnoughTickectsRemaining $e) {
             return response()->json([], 422);
         }
     }

@@ -27,9 +27,11 @@ class PurchaseTicketsTest extends TestCase
     /** @test **/
     public function users_can_purchase_tickets_of_a_published_concert()
     {
+        $this->withoutExceptionHandling();
+
         $concert = factory(Concert::class)->state('published')->create(['ticket_price' => 3500])->addTickets(4);
 
-        $this->postJson("concerts/{$concert->id}/orders", [
+        $response = $this->postJson("concerts/{$concert->id}/orders", [
             'email' => 'john@example.com',
             'ticket_quantity' => 4,
             'payment_token' => $this->paymentGateway->getValidTestToken()
@@ -38,6 +40,13 @@ class PurchaseTicketsTest extends TestCase
         $this->assertEquals(14000, $this->paymentGateway->totalCharges());
 
         $this->assertTrue($concert->hasOrdersFor('john@example.com'));
+
+        $response->assertJson([
+            'email' => 'john@example.com',
+            'amount' => 14000,
+            'ticket_quantity' => 4
+        ]);
+
         $this->assertEquals(4, $concert->ordersFor('john@example.com')->first()->ticketQuantity());
     }
 
@@ -58,8 +67,10 @@ class PurchaseTicketsTest extends TestCase
     }
 
     /** @test **/
-    public function can_not_purchase_more_tickets_thaan_the_remaining()
+    public function can_not_purchase_more_tickets_than_the_remaining()
     {
+        $this->withoutExceptionHandling();
+
         $concert = factory(Concert::class)->state('published')->create()->addTickets(50);
 
         $this->postJson("concerts/{$concert->id}/orders", [
@@ -130,7 +141,7 @@ class PurchaseTicketsTest extends TestCase
 
     /** @test **/
     public function valid_payment_token_is_required_to_make_a_successful_purchase()
-    {
+    {        
         $concert = factory(Concert::class)->states('published')->create()->addTickets(4);
 
         $response = $this->postJson("concerts/{$concert->id}/orders", [
