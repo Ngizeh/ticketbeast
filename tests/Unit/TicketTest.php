@@ -2,9 +2,9 @@
 
 namespace Tests\Unit;
 
+use App\Ticket;
 use App\Concert;
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class TicketTest extends TestCase
@@ -21,18 +21,24 @@ class TicketTest extends TestCase
         $this->assertEquals(2, $concert->tickets()->available()->count());
     }
 
+    /** @test **/
+    public function ticket_can_reserved()
+    {
+        $ticket = factory(Ticket::class)->create();
 
-        /** @test **/
-        public function can_be_released()
-        {
-            $concert = factory(Concert::class)->create()->addTickets(1);
-            $order = $concert->orderTickets('jane@example.com', 1);
-            $ticket = $order->tickets()->first();
-            $this->assertEquals($order->id, $ticket->order_id);
-    
-            $ticket->release();
-    
-            $this->assertNull($ticket->fresh()->order_id);
-        }
-    
+        $ticket->reserve();
+
+        $this->assertNotNull($ticket->fresh()->reserved_at);
+    }
+
+
+    /** @test **/
+    public function can_be_released()
+    {
+        $ticket = factory(Ticket::class)->states('reserved')->create();
+
+        $ticket->release();
+
+        $this->assertNull($ticket->fresh()->reserved_id);
+    }
 }

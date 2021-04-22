@@ -3,6 +3,7 @@
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
+use Facades\App\OrderConfirmationNumber;
 
 class Order extends Model
 {
@@ -11,6 +12,7 @@ class Order extends Model
     public static function ticketsFor($tickets, $email, $amount)
     {
         $orders = self::create([
+            'confirmation_order' => OrderConfirmationNumber::generate(),
             'email' => $email,
             'amount' => $amount
         ]);
@@ -20,7 +22,12 @@ class Order extends Model
         }
         return $orders;
     }
-    
+
+    public static function findByConfirmationOrder($order)
+    {
+    	return static::where('confirmation_order', $order)->firstOrFail();
+    }
+
 
     public function tickets()
     {
@@ -32,25 +39,17 @@ class Order extends Model
         return $this->tickets()->count();
     }
 
-    public function cancel()
-    {
-        foreach($this->tickets as $ticket){
-            $ticket->release();
-        }
-
-        $this->delete();
-    }
-
     public function toArray()
     {
         return [
+            'confirmation_order' => $this->confirmation_order,
             'email' => $this->email,
             'amount' => $this->amount,
             'ticket_quantity' => $this->ticketQuantity()
         ];
     }
-    
-    
-    
+
+
+
 
 }

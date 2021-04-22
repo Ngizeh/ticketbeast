@@ -4,25 +4,31 @@ namespace Tests\Unit\Billing;
 
 use Tests\TestCase;
 use App\Billing\FakePaymentGateway;
-use App\Billing\PaymentFailedException;
 
 class FakePaymentGatewayTest extends TestCase
 {
-    /** @test **/
-    public function it_charges_a_concert_with_a_valid_token()
+    use PaymentGatewayContractTests;
+
+    public function getPaymentGateway(): FakePaymentGateway
     {
-        $paymentGateway = new FakePaymentGateway;
-
-        $paymentGateway->charge(3500, $paymentGateway->getValidTestToken());
-
-        $this->assertEquals(3500, $paymentGateway->totalCharges());
-    }
+		return  new FakePaymentGateway;
+	}
 
     /** @test **/
-    public function purchase_fails_with_a_valid_token()
+    public function running_a_hook_before_the_first_charge()
     {
-        $paymentGateway = new FakePaymentGateway;
-        $this->expectException(PaymentFailedException::class);
-        $paymentGateway->charge(3500, 'invalid-test-token');
+        $paymentGateway = $this->getPaymentGateway();
+        $callbackRun = 0;
+
+        $paymentGateway->beforeFirstCharge(function ($paymentGateway) use (&$callbackRun){
+            $callbackRun++;
+            $paymentGateway->charge(2500, $paymentGateway->getValidTestToken());
+            $this->assertEquals(2500, $paymentGateway->totalCharges());
+        });
+
+        $paymentGateway->charge(2500, $paymentGateway->getValidTestToken());
+        $this->assertEquals(5000, $paymentGateway->totalCharges());
+        $this->assertEquals(1, $callbackRun);
     }
+
 }

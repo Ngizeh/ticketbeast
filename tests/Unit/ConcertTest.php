@@ -135,4 +135,37 @@ class ConcertTest extends TestCase
 		$this->assertNull($johnOrders);
 		$this->assertEquals(5, $concert->ticketsRemaining());
 	}
+
+	/** @test **/
+	public function can_reserve_a_ticket()
+	{
+		$concert = factory(Concert::class)->create()->addTickets(15);
+		$this->assertEquals(15, $concert->ticketsRemaining());
+		
+		$reservation = $concert->reserveTickets(10, 'jane@example.com');
+		
+		$this->assertCount(10, $reservation->tickets());
+		$this->assertEquals(5, $concert->ticketsRemaining());
+	}
+
+	/** @test **/
+	public function can_not_reserve_already_purchased_tickets()
+	{
+		$concert = factory(Concert::class)->create()->addTickets(5);
+		$concert->orderTickets('jane@example.com', 4);
+		$this->expectException(NotEnoughTickectsRemaining::class);
+        $concert->reserveTickets(3, 'jane@example.com');
+		$this->assertEquals(1, $concert->ticketsRemaining());
+	}
+
+	/** @test **/
+	public function can_not_reserve_already_been_reserved()
+	{
+		$concert = factory(Concert::class)->create()->addTickets(5);
+		$concert->reserveTickets(4, 'jane@example.com');
+		$this->expectException(NotEnoughTickectsRemaining::class);
+        $concert->reserveTickets(3, 'jane@example.com');
+		$this->assertEquals(1, $concert->ticketsRemaining());
+	}
+	
 }

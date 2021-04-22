@@ -2,11 +2,14 @@
 
 namespace Tests\Unit;
 
-use App\Order;
 use App\Concert;
-use Tests\TestCase;
-use Illuminate\Foundation\Testing\WithFaker;
+use App\Order;
+use App\Reservation;
+use App\Ticket;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\WithFaker;
+use Tests\TestCase;
 
 class OrdersTest extends TestCase
 {
@@ -25,34 +28,52 @@ class OrdersTest extends TestCase
         $this->assertEquals(3, $order->ticketQuantity());
         $this->assertEquals('jane@example.com', $order->email);
     }
-    
-    
+
+    /** @test **/
+    public function retrieving_orders_by_confirmation_orders()
+    {
+        $order = factory(Order::class)->create([
+            'confirmation_order' => 'ORDERCONFIRMATION12345'
+        ]);
+
+        $foundOrder = Order::findByConfirmationOrder('ORDERCONFIRMATION12345');
+
+        $this->assertEquals($foundOrder->id, $order->id);
+    }
+
+    /** @test **/
+    public function retrieving_orders_by_confirmation_orders_that_does_not_exist_throws_an_error()
+    {
+        $order = factory(Order::class)->create([
+            'confirmation_order' => 'ORDERCONFIRMATION12345'
+        ]);
+
+        $this->expectException(ModelNotFoundException::class);
+
+        $foundOrder = Order::findByConfirmationOrder('ORDERTHATDOESNOTEXIST12345');
+
+        $this->assertFalse($foundOrder->id, $order->id);
+    }
+
+
     /** @test **/
     public function converting_the_order_into_array()
-    {        
-        $concert = factory(Concert::class)->create(['ticket_price' => 1200])->addTickets(5);
-        $order = $concert->orderTickets('jane@example.com', 5);
+    {
+        $order = factory(Order::class)->create([
+            'confirmation_order' => 'ORDERCONFIRMATION12345',
+            'email' => 'jane@example.com',
+            'amount' => 6000
+        ]);
+        
+        $order->tickets()->saveMany(factory(Ticket::class, 5)->create());
 
         $results = $order->toArray();
 
         $this->assertEquals([
             'email' => 'jane@example.com',
             'amount' => 6000,
-            'ticket_quantity' =>  5
+            'ticket_quantity' =>  5,
+            'confirmation_order' => 'ORDERCONFIRMATION12345',
         ], $results);
-    }
-
-
-    /** @test **/
-    public function order_can_be_cancelled()
-    {
-        $concert = factory(Concert::class)->create()->addTickets(5);
-        $order = $concert->orderTickets('jane@example.com', 4);
-        $this->assertEquals(1, $concert->ticketsRemaining());
-
-        $order->cancel();
-
-        $this->assertEquals(5, $concert->ticketsRemaining());
-        $this->assertNull($order->fresh());
     }
 }

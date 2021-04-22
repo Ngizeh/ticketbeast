@@ -10,7 +10,9 @@ class Concert extends Model
     protected $guarded = [];
 
     protected $dates = ['date'];
-    
+
+    protected $casts = ['price' => 'integer'];
+
     public function scopePublished($query)
     {
         return $query->whereNotNull('published_at');
@@ -36,6 +38,17 @@ class Concert extends Model
         return $this->orders()->whereEmail($customerEmail)->get();
     }
 
+    public function findTickets($quantity)
+    {
+        $tickets = $this->tickets()->available()->take($quantity)->get();
+
+        if ($tickets->count() < $quantity) {
+            throw new NotEnoughTickectsRemaining;
+        }
+
+        return $tickets;
+    }
+
 
     public function orderTickets($email, $ticketQuantity)
     {
@@ -48,19 +61,13 @@ class Concert extends Model
     {
         return Order::ticketsFor($tickets, $email, $tickets->sum('price'));
     }
-    
 
-    public function findTickets($quantity)
+    public function reserveTickets($ticketQuantity, $email)
     {
-        $tickets = $this->tickets()->available()->take($quantity)->get();
+        $tickets = $this->findTickets($ticketQuantity)->each(fn($ticket) => $ticket->reserve());
 
-        if ($tickets->count() < $quantity) {
-            throw new NotEnoughTickectsRemaining;
-        }
-
-        return $tickets;
+        return new Reservation($tickets, $email);
     }
-    
 
     public function addTickets($quantity)
     {
